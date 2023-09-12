@@ -1,0 +1,10 @@
+pyyaml
+ipykernel
+jupyter
+azure-identity
+# azureml-core
+azure-ai-ml
+azure-mgmt-resource
+azure-mgmt-storage
+azure-mgmt-network
+azure-mgmt-cognitiveservices
