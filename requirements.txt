@@ -2,7 +2,7 @@ pyyaml
 ipykernel
 jupyter
 azure-identity
-# azureml-core
+azureml-core
 azure-ai-ml
 azure-mgmt-resource
 azure-mgmt-storage
