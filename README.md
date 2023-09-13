@@ -44,14 +44,13 @@ Follow the step-by-step guide using Azure's Python SDK to configure and deploy t
     - Enables Azure interavtivity, using personal account
     - May require restart, to be added to system path
 
-2. Clone this repo
-
-
-3. Add Service Principal Secrets
+2. Create a Service Principal in Azure and create `config.yaml` file
     - Create a service principal with the the `contributer` role
     - take note of its `client id`, `tenant id`, and obtain a `secret key` from it.
     - take note of the `subscription id` for the azure directory you wish to work in.
     - add these to the `config_template.yaml` file and **rename it** to `config.yaml`
+
+3. Clone this repo
 
 4. Setup Python Virtual Environment & Install Requirements (Windows)
     - 4.1 Open project folder In VS Code
