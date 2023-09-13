@@ -2,10 +2,10 @@
 # Azure-PrivateML-OpenAI-Integration
 
 ## Description
-This repository enables the automated creation of a secure, private Azure ecosystem encompassing Machine Learning (AML) services, OpenAI services, and Blob Storage. All services are configured to operate within an Azure Virtual Network (VNet), ensuring data privacy and secure API interactions.
+This repository enables the automated creation of a secure, private Azure Machine Learning (AML) services, Azure OpenAI services, and Blob Storage which are configured to operate within an Azure Virtual Network (VNet), ensuring data privacy and secure API interactions.
 
 ## Motivation
-The ultimate use of this repo is for efficiently building secure AI solutions, particularly in Language Learning Models (LLMs) for question-answering on sensitive, domain-specific client data. While Azure OpenAI service offers a safer haven against data leakage to OpenAI, setting it up securely yet flexibly is non-trivial. The aim here is to bridge that gap by providing a straightforward method to build a tightly-locked Azure environment. This not only assures clients of data integrity but also fosters a flexible development environment. By automating the provisioning of such workspaces, we expedite the real-world adoption and scalability of AI solutions in privacy-critical applications.
+ To efficiently build secure AI solutions, particularly using Language Learning Models (LLMs) for question-answering on sensitive, domain-specific client data. While Azure OpenAI service offers a safer haven against data leakage to OpenAI, setting it up securely yet flexibly is non-trivial. The aim here is to bridge that gap by providing a straightforward method to build a tightly-locked Azure environment. This not only assures clients of data integrity but also fosters a flexible development environment. By automating the provisioning of such workspaces, we accelerate the development speed and scalability of LLM solutions in privacy-critical applications.
 
 
 ## Features
