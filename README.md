@@ -2,18 +2,18 @@
 # Azure-PrivateML-OpenAI-Integration
 
 ## Description
-This repository enables the automated creation of a secure, private, Azure Machine Learning (AML) workspace, Azure OpenAI services, and Blob Storage which are configured to operate within an Azure Virtual Network (VNet), ensuring data privacy and secure API interactions.
+This repository enables the automated creation of a private Azure Machine Learning (AML) workspace, Blob Storage, Container Registry, Secrets Manager, and Azure OpenAI Service - all configured to operate within an Azure Virtual Network (VNet), ensuring data privacy and secure API interactions.
 
 ## Motivation
- To efficiently build secure AI solutions, particularly using Language Learning Models (LLMs) for question-answering on sensitive, domain-specific client data. While Azure OpenAI service offers safety against data leakage to OpenAI, setting it up securely yet flexibly is non-trivial. The aim here is to provide a straightforward method to provision Azure environments that do not allow outbound network traffic, but will allow traffic between services. This not only assures clients of data integrity but also fosters a flexible development environment. By automating the provisioning of such workspaces, we accelerate the development speed and scalability of LLM solutions in privacy-critical applications.
+ To provision workspaces for secure AI solutions, particularly using Language Learning Models (LLMs) for question-answering on sensitive, domain-specific client data. Azure OpenAI service offers safety against data leakage to OpenAI, but developing solutions with it securely is non-trivial. The aim here is to create an AML workspace that restricts public outbound network traffic, but will allow traffic between private Azure services like OpenAI, assuring clients of data integrity. Automating this proces can accelerate the development speed of LLM solutions in privacy-critical applications.
 
 
 ## Features
 - **Private Networking**: Isolate all services within a VNet.
+- **Firewall**: Allow traffic to whitelisted domains.
 - **Azure Machine Learning Workspace**: Run and manage ML tasks.
 - **Azure OpenAI Service**: Leverage OpenAI capabilities within the same VNet.
-- **Blob Storage**: Securely store project and client files.
-- **Secure File Handling**: Enable safe file uploads and data imports.
+- **Blob Storage**: Storage for AML, project development, and client data.
 - **API Security**: Use private endpoints for AML-OpenAI communication.
 
 
