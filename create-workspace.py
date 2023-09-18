@@ -8,12 +8,14 @@ from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.storage import StorageManagementClient
 from azureml.core import Workspace
-# from azure.ai.ml.entities import Workspace
+
+from azure.core.exceptions import HttpResponseError
+
 import datetime
 import yaml
 
 # %% [markdown]
-# ## Azure Client Authentication
+# # Azure Client Authentication & Setup
 
 # %%
 # Load secret keys from YAML file
@@ -53,6 +55,9 @@ storage_account_name = 'amlprivatestorage'
 openai_account_name = 'genai-test-openai'
 
 
+# %% [markdown]
+# # Create Resources
+
 # %%
 # Create Resource Group
 resource_client.resource_groups.create_or_update(
@@ -61,7 +66,7 @@ resource_client.resource_groups.create_or_update(
 )
 
 # %% [markdown]
-# ## Configure Networking Resources
+# ## Create Virtual Network
 
 # %%
 # Create Virtual Network
@@ -71,10 +76,19 @@ vnet_params = {
         'address_prefixes': ['10.0.0.0/16']
     }
 }
-network_client.virtual_networks.begin_create_or_update(resource_group_name, vnet_name, vnet_params)
+try:
+    network_client.virtual_networks.begin_create_or_update(resource_group_name, vnet_name, vnet_params)
+
+except HttpResponseError as e:
+    # Check if the error code, caused if Vnet already exists and can't be modified
+    if e.error.code == "InUseSubnetCannotBeDeleted":
+        print("VNet already exists and has an in-use subnet. Skipping VNet creation.")
+    else:
+        # If it's a different error, you may want to propagate it or handle it differently
+        raise
 
 # %% [markdown]
-# ### Create Firewall
+# ## Create Firewall to Manage Traffic
 
 # %%
 # Create a Subnet for the Firewall, within the VNet
@@ -84,6 +98,7 @@ subnet_params_2 = {
     'address_prefix': '10.0.0.0/24',
 }
 
+# Create subnet within VNet, for this firewall
 network_client.subnets.begin_create_or_update(
     resource_group_name,
     vnet_name,
@@ -97,7 +112,7 @@ subnet = network_client.subnets.get(resource_group_name, vnet_name, subnet_name)
 subnet_id = subnet.id
 
 # %%
-# Create public IP for firewall to use
+# Create public IP for firewall
 public_ip_params = {
     "location": location,
     "sku": {
@@ -159,7 +174,7 @@ firewall = firewall_poller.result()
 
 
 # %% [markdown]
-# ### Connect PrivateSubnet to Firewall w/ Route Table
+# ## Create a Route Table, to enable Primary PrivateSubnet link to FirewallSubnet
 
 # %%
 # Get Azure Firewall details
@@ -199,6 +214,7 @@ route_table = network_client.route_tables.begin_create_or_update(
 
 # %%
 # Create Private Subnet, within the VNet
+# Note route table link
 
 subnet_params = {
     'address_prefix': '10.0.1.0/24',
@@ -228,17 +244,21 @@ subnet = network_client.subnets.get(resource_group_name, vnet_name, subnet_name)
 subnet_id = subnet.id
 
 # %% [markdown]
-# # Work in Progress
+# ## Run AML Workspace Deployment
 
 # %%
-aml_workspace_name
-
-# %%
+# AML Deployment Resource Names
 UID_str = datetime.datetime.now().strftime("%m%d%H%M")
 UID_str
 
+aml_deployment_name = f"aml_workspace_vnet_deployment_{UID_str}"
+aml_storage_name = f"amlstorage{UID_str}dt"
+aml_keyvault_name = f"amlkeyvault{UID_str}dt"
+aml_container_registry_name = f"amlcontregistry{UID_str}dt"
 
-deployment_name = f"aml_workspace_vnet_deployment_{UID_str}"
+# %%
+# Currently, this cell can only be run once successfully (on initial creation)
+
 template_uri = "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/quickstarts/microsoft.machinelearningservices/machine-learning-workspace-vnet/azuredeploy.json"
 
 parameters = {
@@ -246,16 +266,16 @@ parameters = {
     "location": {"value": location},
     
     "storageAccountOption": {"value": "new"},
-    "storageAccountName": {"value": f"amlstorage{UID_str}dt"},
+    "storageAccountName": {"value": aml_storage_name},
     "storageAccountBehindVNet": {"value": "true"},
 
     "keyVaultOption": {"value": "new"},
-    "keyVaultName": {"value": f"amlkeyvault{UID_str}dt"},
+    "keyVaultName": {"value": aml_keyvault_name},
     "keyVaultBehindVNet": {"value": "true"},
 
 
     "containerRegistryOption": {"value": "new"},
-    "containerRegistryName": {"value": f"amlcontregistry{UID_str}dt"},
+    "containerRegistryName": {"value": aml_container_registry_name},
     "containerRegistrySku": {"value": "Premium"},
     "containerRegistryBehindVNet": {"value": "true"},
     
@@ -278,7 +298,7 @@ deployment_properties = {
 
 resource_client.deployments.begin_create_or_update(
     resource_group_name, 
-    deployment_name, 
+    aml_deployment_name, 
     {"properties": deployment_properties}
 ).result()
 
@@ -340,17 +360,99 @@ print('created container registry private endpoint connection to subnet')
 
 
 # %%
-params = VirtualNetworkGateway(
-    location=location,
-    gateway_type="Vpn",
-    vpn_type="RouteBased",
-    enable_bgp=False,
-    ip_configurations=[ip_config],
-    sku={"name": "VpnGw1"}
-    vpn_gateway_generation="Generation2"
-)
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.network import NetworkManagementClient
+from azure.mgmt.resource import ResourceManagementClient
 
-network_client.virtual_network_gateways.begin_create_or_update(resource_group_name, gateway_name, params).result()
+resource_group_name = "TestRG1"
+location = "eastus"
+vnet_name = "VNet1"
+gateway_subnet_name = "GatewaySubnet"
+gateway_name = "VNet1GW"
+vpn_client_address_pool = "172.16.201.0/24"
+
+# Initialize the Azure credential
+credential = DefaultAzureCredential()
+subscription_id = "<Your Azure Subscription ID>"
+
+# Initialize the Resource Management and Network Management clients
+resource_client = ResourceManagementClient(credential, subscription_id)
+network_client = NetworkManagementClient(credential, subscription_id)
+
+# Create or update subnet configs
+frontend_subnet_config = {
+    "name": "Frontend",
+    "address_prefix": "10.1.0.0/24"
+}
+gateway_subnet_config = {
+    "name": gateway_subnet_name,
+    "address_prefix": "10.1.255.0/27"
+}
+
+# Set Virtual Network
+network_client.virtual_networks.create_or_update(
+    resource_group_name,
+    vnet_name,
+    {
+        "location": location,
+        "address_space": {
+            "address_prefixes": ["10.1.0.0/16"]
+        },
+        "subnets": [frontend_subnet_config, gateway_subnet_config]
+    }
+).result()
+
+# Create Public IP Address
+public_ip_params = {
+    "location": location,
+    "public_ip_allocation_method": "Static",
+    "sku": {
+        "name": "Standard"
+    }
+}
+public_ip = network_client.public_ip_addresses.create_or_update(
+    resource_group_name,
+    "GatewayIP",
+    public_ip_params
+).result()
+
+# Create Virtual Network Gateway
+subnet_info = network_client.subnets.get(
+    resource_group_name,
+    vnet_name,
+    gateway_subnet_name
+)
+ip_config_params = {
+    "name": "gwipconfig1",
+    "public_ip_address": {
+        "id": public_ip.id
+    },
+    "subnet": {
+        "id": subnet_info.id
+    }
+}
+gateway_params = {
+    "location": location,
+    "ip_configurations": [ip_config_params],
+    "gateway_type": "Vpn",
+    "vpn_type": "RouteBased",
+    "enable_bgp": False,
+    "sku": {
+        "name": "VpnGw2",
+        "tier": "VpnGw2"
+    },
+    "vpn_client_configuration": {
+        "vpn_client_protocols": ["IkeV2", "OpenVPN"],
+        "vpn_client_address_pool": {
+            "address_prefixes": [vpn_client_address_pool]
+        }
+    }
+}
+network_client.virtual_network_gateways.create_or_update(
+    resource_group_name,
+    gateway_name,
+    gateway_params
+).result()
 
 
 
